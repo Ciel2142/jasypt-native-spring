@@ -4,15 +4,7 @@ import org.jasypt.util.text.BasicTextEncryptor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.web.reactive.HttpHandlerAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.reactive.ReactiveWebServerFactoryAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.reactive.WebFluxAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.reactive.error.ErrorWebFluxAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
-import org.springframework.boot.builder.SpringApplicationBuilder;
-import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.nativex.hint.*;
@@ -21,9 +13,6 @@ import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
-
-import java.io.IOException;
-import java.util.Properties;
 
 import static org.springframework.web.reactive.function.server.RouterFunctions.route;
 
@@ -37,18 +26,12 @@ import static org.springframework.web.reactive.function.server.RouterFunctions.r
         resources = {
                 @ResourceHint(patterns = "com/ibm/icu/impl/data/icudt67b/.*"),
                 @ResourceHint(patterns = "com/ibm/icu/impl/data/icudt67b.*"),
-//                @ResourceHint(patterns = "com/ibm/icu/impl/data/icudt67b")
-/*
-                @ResourceHint(patterns = "classpath:/resources/application.properties")
-*/
         },
         initialization = @InitializationHint(types = org.jasypt.normalization.Normalizer.class,
                 initTime = InitializationTime.BUILD)
 )
 @SpringBootApplication
 public class GraalvmJacyptApplication {
-
-
     public static void main(String[] args) {
         SpringApplication.run(GraalvmJacyptApplication.class, args);
     }
@@ -61,7 +44,7 @@ public class GraalvmJacyptApplication {
     }
 
     @Bean(name = "playTextEnc")
-    BasicTextEncryptor playTextEncryptor(@Value("${jacypt.test.password}") String password) {
+    BasicTextEncryptor playTextEncryptor(@Value("${jacypt.play.password}") String password) {
         BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
         textEncryptor.setPassword(password);
         return textEncryptor;
@@ -86,6 +69,13 @@ public class GraalvmJacyptApplication {
                 }), String.class))
                 .build();
     }
+}
+
+enum EncType {
+    PRODUCTION,
+    PLAY
+}
+
 //    private static final Class<?>[] AUTO_CONFIG_CLASSES = {
 //            WebFluxAutoConfiguration.class,
 //            WebMvcAutoConfiguration.class,
@@ -156,14 +146,11 @@ public class GraalvmJacyptApplication {
 //                })
 //                .build();
 //    }
-}
 
-enum EncType {
-    PRODUCTION,
-    PLAY
-}
-
-
+///
+//    public static void main(String[] args) {
+//        SpringApplication.run(GraalvmJacyptApplication.class, args);
+//    }
 //
 //    @Bean(name = "prodTextEcn")
 //    BasicTextEncryptor productionTextEncryptor(@Value("${jacypt.prod.password}") String password) {
@@ -173,7 +160,7 @@ enum EncType {
 //    }
 //
 //    @Bean(name = "playTextEnc")
-//    BasicTextEncryptor playTextEncryptor(@Value("${jacypt.test.password}") String password) {
+//    BasicTextEncryptor playTextEncryptor(@Value("${jacypt.play.password}") String password) {
 //        BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
 //        textEncryptor.setPassword(password);
 //        return textEncryptor;
@@ -198,5 +185,3 @@ enum EncType {
 //                }), String.class))
 //                .build();
 //    }
-
-
