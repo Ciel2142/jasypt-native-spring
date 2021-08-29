@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-KyZXEAg3QhqLMpG8r+8fhAXLRk2vvoC2f3B09zVXn8CA5QIVfZOJ3BCsw2P0p/We" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-U1DAWAznBHeqEIlVSCgzq+c9gqGAJn5c/t99JyeKa9xxaYpSvHU5awsuZVVFIhvj" crossorigin="anonymous"></script>
+
+</head>
+<body>
+<div style="display: flex; justify-content: center; margin-top: 100px">
+    <div class="col-md-6 col-sm-6 col-12 mb-2">
+        <form role="form" class="mb-2">
+            <h2 style="text-align: center">Jasypt Encryption</h2>
+            <div class="form-group mb-2">
+                <label for="inputString">Enter plain text to Encrypt</label>
+                <input type="text" class="form-control" id="inputString" placeholder="Enter plain text to hash" name="inputString">
+            </div>
+            <div class="form-group mb-2">
+                <label for="selectedOption">Select Counter</label>
+                <select class="form-control" id="selectedOption" style="height: 45px;">
+                    <option selected="" value="PLAY">Play</option>
+                    <option value="PRODUCTION">Production</option>
+                </select>
+            </div>
+            <div class="form-group mb-2">
+                <button id="encryptButton" class="btn btn-primary" type="button">Encrypt</button>
+            </div>
+
+            <div class="form-group mb-2">
+                <label for="encryptedResultantString">Encrypted String:</label>
+                <input id="encryptedResultantString" class="form-control" placeholder="Result goes here">
+            </div>
+
+        </form>
+    </div>
+    <script src="app.js" defer></script>
+</div>
+</body>
+</html>
