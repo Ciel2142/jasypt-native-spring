@@ -48,7 +48,6 @@ public class GraalvmJacyptApplication {
             HttpHandlerAutoConfiguration.class,
             ErrorWebFluxAutoConfiguration.class,
             ErrorWebExceptionHandler.class
-//            ConfigurationPropertiesAutoConfiguration.class
     };
 
     private static final String PLAY_ENCRYPTOR = "playEncryptor";
