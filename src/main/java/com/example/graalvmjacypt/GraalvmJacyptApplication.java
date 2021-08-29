@@ -1,10 +1,16 @@
 package com.example.graalvmjacypt;
 
 import org.jasypt.util.text.BasicTextEncryptor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
+import org.springframework.boot.autoconfigure.web.reactive.HttpHandlerAutoConfiguration;
+import org.springframework.boot.autoconfigure.web.reactive.ReactiveWebServerFactoryAutoConfiguration;
+import org.springframework.boot.autoconfigure.web.reactive.WebFluxAutoConfiguration;
+import org.springframework.boot.autoconfigure.web.reactive.error.ErrorWebFluxAutoConfiguration;
+import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler;
+import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.nativex.hint.*;
@@ -13,6 +19,9 @@ import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
+
+import java.io.IOException;
+import java.util.Properties;
 
 import static org.springframework.web.reactive.function.server.RouterFunctions.route;
 
@@ -32,41 +41,73 @@ import static org.springframework.web.reactive.function.server.RouterFunctions.r
 )
 @SpringBootApplication
 public class GraalvmJacyptApplication {
+    private static final Class<?>[] AUTO_CONFIG_CLASSES = {
+            WebFluxAutoConfiguration.class,
+            WebMvcAutoConfiguration.class,
+            ReactiveWebServerFactoryAutoConfiguration.class,
+            HttpHandlerAutoConfiguration.class,
+            ErrorWebFluxAutoConfiguration.class,
+            ErrorWebExceptionHandler.class
+//            ConfigurationPropertiesAutoConfiguration.class
+    };
+
+    private static final String PLAY_ENCRYPTOR = "playEncryptor";
+    private static final String PRODUCTION_ENCRYPTOR = "productionEncryptor";
+
     public static void main(String[] args) {
-        SpringApplication.run(GraalvmJacyptApplication.class, args);
+        appBuild().run(args);
     }
 
-    @Bean(name = "prodTextEcn")
-    BasicTextEncryptor productionTextEncryptor(@Value("${jacypt.prod.password}") String password) {
-        BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
-        textEncryptor.setPassword(password);
-        return textEncryptor;
-    }
+    private static SpringApplication appBuild() {
+        return new SpringApplicationBuilder()
+                .sources(AUTO_CONFIG_CLASSES)
+                .initializers((GenericApplicationContext ctx) -> {
+                    ctx.registerBean("appProps", Properties.class, () -> {
+                        Properties properties = new Properties();
+                        try {
+                            properties.load(GraalvmJacyptApplication.class
+                                    .getClassLoader()
+                                    .getResourceAsStream("application.properties"));
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                        return properties;
+                    });
 
-    @Bean(name = "playTextEnc")
-    BasicTextEncryptor playTextEncryptor(@Value("${jacypt.play.password}") String password) {
-        BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
-        textEncryptor.setPassword(password);
-        return textEncryptor;
-    }
+                    ctx.registerBean(RouterFunction.class,
+                            () -> RouterFunctions.resources("/**", new ClassPathResource("/")));
 
-    @Bean
-    RouterFunction<?> resourceRoute() {
-        return RouterFunctions.resources("/**", new ClassPathResource("/"));
-    }
+                    ctx.registerBean(PRODUCTION_ENCRYPTOR, BasicTextEncryptor.class, () -> {
+                        Properties properties = ctx.getBean("appProps", Properties.class);
+                        BasicTextEncryptor encryptor = new BasicTextEncryptor();
+                        encryptor.setPassword(properties.getProperty("jacypt.prod.password"));
+                        return encryptor;
+                    });
 
-    @Bean
-    RouterFunction<?> routerFunction(BasicTextEncryptor prodTextEcn, BasicTextEncryptor playTextEnc) {
-        return route()
-                .POST("/api/v1/encrypt", serverRequest -> ServerResponse.ok().body(Mono.defer(() -> {
-                    EncType enc = EncType.valueOf(serverRequest.queryParam("encType")
-                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "encType is missing")));
-                    String value = serverRequest.queryParam("value").
-                            orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "value is missing"));
+                    ctx.registerBean(PLAY_ENCRYPTOR, BasicTextEncryptor.class, () -> {
+                        Properties properties = ctx.getBean("appProps", Properties.class);
+                        BasicTextEncryptor encryptor = new BasicTextEncryptor();
+                        encryptor.setPassword(properties.getProperty("jacypt.play.password"));
+                        return encryptor;
+                    });
 
-                    if (enc == EncType.PLAY) return Mono.just(playTextEnc.encrypt(value));
-                    else return Mono.just(prodTextEcn.encrypt(value));
-                }), String.class))
+                    ctx.registerBean(RouterFunction.class, () -> {
+                        BasicTextEncryptor productionEncryptor = ctx.getBean(PRODUCTION_ENCRYPTOR, BasicTextEncryptor.class);
+                        BasicTextEncryptor playEncryptor = ctx.getBean(PLAY_ENCRYPTOR, BasicTextEncryptor.class);
+                        return route()
+                                .POST("/api/v1/encrypt", serverRequest -> ServerResponse.ok().body(Mono.defer(() -> {
+                                    EncType enc = EncType.valueOf(serverRequest.queryParam("encType")
+                                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "encType is missing")));
+                                    String value = serverRequest.queryParam("value").
+                                            orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "value is missing"));
+
+                                    if (enc == EncType.PLAY) return Mono.just(playEncryptor.encrypt(value));
+                                    else return Mono.just(productionEncryptor.encrypt(value));
+
+                                }), String.class))
+                                .build();
+                    });
+                })
                 .build();
     }
 }
@@ -75,113 +116,3 @@ enum EncType {
     PRODUCTION,
     PLAY
 }
-
-//    private static final Class<?>[] AUTO_CONFIG_CLASSES = {
-//            WebFluxAutoConfiguration.class,
-//            WebMvcAutoConfiguration.class,
-//            ReactiveWebServerFactoryAutoConfiguration.class,
-//            HttpHandlerAutoConfiguration.class,
-//            ErrorWebFluxAutoConfiguration.class,
-//            ErrorWebExceptionHandler.class
-////            ConfigurationPropertiesAutoConfiguration.class
-//    };
-//
-//
-//    private static final String PLAY_ENCRYPTOR = "playEncryptor";
-//    private static final String PRODUCTION_ENCRYPTOR = "productionEncryptor";
-//
-//    public static void main(String[] args) {
-//        appBuild().run(args);
-//    }
-//
-//    private static SpringApplication appBuild() {
-//        return new SpringApplicationBuilder()
-//                .sources(AUTO_CONFIG_CLASSES)
-//                .initializers((GenericApplicationContext ctx) -> {
-//                    ctx.registerBean("appProps", Properties.class, () -> {
-//                        Properties properties = new Properties();
-//                        try {
-//                            properties.load(GraalvmJacyptApplication.class
-//                                    .getClassLoader()
-//                                    .getResourceAsStream("application.properties"));
-//                        } catch (IOException e) {
-//                            throw new RuntimeException(e);
-//                        }
-//                        return properties;
-//                    });
-//
-//                    ctx.registerBean(RouterFunction.class,
-//                            () -> RouterFunctions.resources("/**", new ClassPathResource("/")));
-//
-//                    ctx.registerBean(PRODUCTION_ENCRYPTOR, BasicTextEncryptor.class, () -> {
-//                        Properties properties = ctx.getBean("appProps", Properties.class);
-//                        BasicTextEncryptor encryptor = new BasicTextEncryptor();
-//                        encryptor.setPassword(properties.getProperty("jacypt.prod.password"));
-//                        return encryptor;
-//                    });
-//
-//                    ctx.registerBean(PLAY_ENCRYPTOR, BasicTextEncryptor.class, () -> {
-//                        Properties properties = ctx.getBean("appProps", Properties.class);
-//                        BasicTextEncryptor encryptor = new BasicTextEncryptor();
-//                        encryptor.setPassword(properties.getProperty("jacypt.play.password"));
-//                        return encryptor;
-//                    });
-//
-//                    ctx.registerBean(RouterFunction.class, () -> {
-//                        BasicTextEncryptor productionEncryptor = ctx.getBean(PRODUCTION_ENCRYPTOR, BasicTextEncryptor.class);
-//                        BasicTextEncryptor playEncryptor = ctx.getBean(PLAY_ENCRYPTOR, BasicTextEncryptor.class);
-//                        return route()
-//                                .POST("/api/v1/encrypt", serverRequest -> ServerResponse.ok().body(Mono.defer(() -> {
-//                                    EncType enc = EncType.valueOf(serverRequest.queryParam("encType")
-//                                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "encType is missing")));
-//                                    String value = serverRequest.queryParam("value").
-//                                            orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "value is missing"));
-//
-//                                    if (enc == EncType.PLAY) return Mono.just(playEncryptor.encrypt(value));
-//                                    else return Mono.just(productionEncryptor.encrypt(value));
-//
-//                                }), String.class))
-//                                .build();
-//                    });
-//                })
-//                .build();
-//    }
-
-///
-//    public static void main(String[] args) {
-//        SpringApplication.run(GraalvmJacyptApplication.class, args);
-//    }
-//
-//    @Bean(name = "prodTextEcn")
-//    BasicTextEncryptor productionTextEncryptor(@Value("${jacypt.prod.password}") String password) {
-//        BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
-//        textEncryptor.setPassword(password);
-//        return textEncryptor;
-//    }
-//
-//    @Bean(name = "playTextEnc")
-//    BasicTextEncryptor playTextEncryptor(@Value("${jacypt.play.password}") String password) {
-//        BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
-//        textEncryptor.setPassword(password);
-//        return textEncryptor;
-//    }
-//
-//    @Bean
-//    RouterFunction<?> resourceRoute() {
-//        return RouterFunctions.resources("/**", new ClassPathResource("/"));
-//    }
-//
-//    @Bean
-//    RouterFunction<?> routerFunction(BasicTextEncryptor prodTextEcn, BasicTextEncryptor playTextEnc) {
-//        return route()
-//                .POST("/api/v1/encrypt", serverRequest -> ServerResponse.ok().body(Mono.defer(() -> {
-//                    EncType enc = EncType.valueOf(serverRequest.queryParam("encType")
-//                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "encType is missing")));
-//                    String value = serverRequest.queryParam("value").
-//                            orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "value is missing"));
-//
-//                    if (enc == EncType.PLAY) return Mono.just(playTextEnc.encrypt(value));
-//                    else return Mono.just(prodTextEcn.encrypt(value));
-//                }), String.class))
-//                .build();
-//    }
