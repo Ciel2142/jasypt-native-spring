@@ -10,6 +10,7 @@ import org.springframework.boot.autoconfigure.web.reactive.error.ErrorWebFluxAut
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler;
 import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.core.env.Environment;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.nativex.hint.NativeHint;
@@ -21,18 +22,14 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
-import java.io.IOException;
-import java.util.Properties;
-
 import static org.springframework.web.reactive.function.server.RouterFunctions.route;
 
 @NativeHint(
         types = @TypeHint(
                 types = {
-                        java.text.Normalizer.class,
                         com.ibm.icu.text.Normalizer.class
                 }),
-        resources = {@ResourceHint(patterns = "com/ibm/icu/impl/data/icudt67b.*")}
+        resources = @ResourceHint(patterns = "com/ibm/icu/impl/data/icudt67b.*")
 )
 @SpringBootApplication
 public class GraalvmJacyptApplication {
@@ -53,21 +50,15 @@ public class GraalvmJacyptApplication {
                 .sources(AUTO_CONFIG_CLASSES)
                 .initializers((GenericApplicationContext ctx) -> {
                     final String playEncKey = "playEnc";
-                    final String prodEncKey = "productionEnc";
-                    final Properties properties = new Properties();
-                    try {
-                        properties.load(GraalvmJacyptApplication.class
-                                .getClassLoader()
-                                .getResourceAsStream("application.properties"));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
+                    final String prodEncKey = "prodEnc";
+
+                    Environment environment = ctx.getEnvironment();
 
                     ctx.registerBean(RouterFunction.class, () -> RouterFunctions.resources("/**", new ClassPathResource("/")));
 
-                    ctx.registerBean(prodEncKey, BasicTextEncryptor.class, () -> getEncryptor(properties.getProperty("jacypt.prod.password")));
+                    ctx.registerBean(prodEncKey, BasicTextEncryptor.class, () -> getEncryptor(environment.getProperty("jacypt.prod.password")));
 
-                    ctx.registerBean(playEncKey, BasicTextEncryptor.class, () -> getEncryptor(properties.getProperty("jacypt.play.password")));
+                    ctx.registerBean(playEncKey, BasicTextEncryptor.class, () -> getEncryptor(environment.getProperty("jacypt.play.password")));
 
                     ctx.registerBean(RouterFunction.class, () -> {
                         BasicTextEncryptor productionEncryptor = ctx.getBean(prodEncKey, BasicTextEncryptor.class);
