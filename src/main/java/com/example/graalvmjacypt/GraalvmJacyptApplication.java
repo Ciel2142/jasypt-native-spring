@@ -22,6 +22,8 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
+import java.util.Objects;
+
 import static org.springframework.web.reactive.function.server.RouterFunctions.route;
 
 @NativeHint(
@@ -54,13 +56,19 @@ public class GraalvmJacyptApplication {
 
                     Environment environment = ctx.getEnvironment();
 
-                    ctx.registerBean(RouterFunction.class, () -> RouterFunctions.resources("/**", new ClassPathResource("/")));
+                    ctx.registerBean(prodEncKey, BasicTextEncryptor.class, () -> {
+                        BasicTextEncryptor encryptor = new BasicTextEncryptor();
+                        encryptor.setPassword(Objects.requireNonNull(environment.getProperty("jacypt.prod.password")));
+                        return encryptor;
+                    });
 
-                    ctx.registerBean(prodEncKey, BasicTextEncryptor.class, () -> getEncryptor(environment.getProperty("jacypt.prod.password")));
+                    ctx.registerBean(playEncKey, BasicTextEncryptor.class, () -> {
+                        BasicTextEncryptor encryptor = new BasicTextEncryptor();
+                        encryptor.setPassword(Objects.requireNonNull(environment.getProperty("jacypt.play.password")));
+                        return encryptor;
+                    });
 
-                    ctx.registerBean(playEncKey, BasicTextEncryptor.class, () -> getEncryptor(environment.getProperty("jacypt.play.password")));
-
-                    ctx.registerBean(RouterFunction.class, () -> {
+                    ctx.registerBean("mainRouter", RouterFunction.class, () -> {
                         BasicTextEncryptor productionEncryptor = ctx.getBean(prodEncKey, BasicTextEncryptor.class);
                         BasicTextEncryptor playEncryptor = ctx.getBean(playEncKey, BasicTextEncryptor.class);
                         return route().POST("/api/v1/encrypt", serverRequest -> ServerResponse.ok().body(Mono.defer(() -> {
@@ -79,6 +87,9 @@ public class GraalvmJacyptApplication {
                                 }), String.class))
                                 .build();
                     });
+
+                    ctx.registerBean("resourceRouter", RouterFunction.class, () -> RouterFunctions.resources("/**", new ClassPathResource("/")));
+
                 })
                 .build();
     }
