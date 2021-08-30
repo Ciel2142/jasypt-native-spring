@@ -93,10 +93,4 @@ public class GraalvmJacyptApplication {
                 })
                 .build();
     }
-
-    private static BasicTextEncryptor getEncryptor(String password) {
-        BasicTextEncryptor encryptor = new BasicTextEncryptor();
-        encryptor.setPassword(password);
-        return encryptor;
-    }
 }
