@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-KyZXEAg3QhqLMpG8r+8fhAXLRk2vvoC2f3B09zVXn8CA5QIVfZOJ3BCsw2P0p/We" crossorigin="anonymous">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-U1DAWAznBHeqEIlVSCgzq+c9gqGAJn5c/t99JyeKa9xxaYpSvHU5awsuZVVFIhvj" crossorigin="anonymous"></script>
-
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-KyZXEAg3QhqLMpG8r+8fhAXLRk2vvoC2f3B09zVXn8CA5QIVfZOJ3BCsw2P0p/We" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-U1DAWAznBHeqEIlVSCgzq+c9gqGAJn5c/t99JyeKa9xxaYpSvHU5awsuZVVFIhvj"
+            crossorigin="anonymous"></script>
 </head>
 <body>
 <div style="display: flex; justify-content: center; margin-top: 100px">
@@ -14,7 +16,8 @@
             <h2 style="text-align: center">Jasypt Encryption</h2>
             <div class="form-group mb-2">
                 <label for="inputString">Enter plain text to Encrypt</label>
-                <input type="text" class="form-control" id="inputString" placeholder="Enter plain text to hash" name="inputString">
+                <input type="text" class="form-control" id="inputString" placeholder="Enter plain text to hash"
+                       name="inputString">
             </div>
             <div class="form-group mb-2">
                 <label for="selectedOption">Select Counter</label>
@@ -34,7 +37,25 @@
 
         </form>
     </div>
-    <script src="app.js" defer></script>
 </div>
+<script>
+    const encTypeEl = document.querySelector("#selectedOption");
+    const resultStringEl = document.querySelector("#encryptedResultantString");
+    const inputStringEl = document.querySelector("#inputString");
+
+    document.querySelector("#encryptButton").addEventListener("click", function () {
+        fetch(`/jacypt/api/v1/encrypt?encType=${encTypeEl.value}&value=${inputStringEl.value}`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            cache: 'no-cache'
+        }).then(res => {
+            if (res.ok) res.text().then(res => {
+                resultStringEl.value = res;
+                resultStringEl.textContent = res;
+            })
+            else res.json().then(res => console.log(res));
+        })
+    })
+</script>
 </body>
 </html>
