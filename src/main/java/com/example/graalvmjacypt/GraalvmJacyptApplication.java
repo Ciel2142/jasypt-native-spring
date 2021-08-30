@@ -68,7 +68,7 @@ public class GraalvmJacyptApplication {
                         return encryptor;
                     });
 
-                    ctx.registerBean(RouterFunction.class, () -> {
+                    ctx.registerBean("mainRouter", RouterFunction.class, () -> {
                         BasicTextEncryptor productionEncryptor = ctx.getBean(prodEncKey, BasicTextEncryptor.class);
                         BasicTextEncryptor playEncryptor = ctx.getBean(playEncKey, BasicTextEncryptor.class);
                         return route().POST("/api/v1/encrypt", serverRequest -> ServerResponse.ok().body(Mono.defer(() -> {
@@ -88,9 +88,15 @@ public class GraalvmJacyptApplication {
                                 .build();
                     });
 
-                    ctx.registerBean(RouterFunction.class, () -> RouterFunctions.resources("/**", new ClassPathResource("/")));
+                    ctx.registerBean("resourceRouter", RouterFunction.class, () -> RouterFunctions.resources("/**", new ClassPathResource("/")));
 
                 })
                 .build();
+    }
+
+    private static BasicTextEncryptor getEncryptor(String password) {
+        BasicTextEncryptor encryptor = new BasicTextEncryptor();
+        encryptor.setPassword(password);
+        return encryptor;
     }
 }
